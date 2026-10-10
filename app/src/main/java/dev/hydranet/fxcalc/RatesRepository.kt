@@ -29,14 +29,14 @@ class RatesRepository(context: Context) {
                     putLong(retrievedAtKey(source), retrievedAt.toEpochMilli())
                     putBoolean(refreshFailedKey(source), false)
                 }
-                ExchangeRatesWidget.notifyDataChanged(appContext)
+                dataChanged()
                 return rates
             } catch (exception: Exception) {
                 lastFailure = exception
             }
         }
         preferences.edit { putBoolean(refreshFailedKey(source), true) }
-        ExchangeRatesWidget.notifyDataChanged(appContext)
+        dataChanged()
         throw lastFailure ?: IllegalStateException("No URL configured for ${source.title}")
     }
 
@@ -55,7 +55,7 @@ class RatesRepository(context: Context) {
 
     fun saveSource(source: RateSource) {
         preferences.edit { putString(KEY_SOURCE, source.id) }
-        ExchangeRatesWidget.notifyDataChanged(appContext)
+        dataChanged()
     }
 
     fun refreshFailed(source: RateSource = source()): Boolean =
@@ -79,7 +79,24 @@ class RatesRepository(context: Context) {
             putString(KEY_BASE, base)
             putString(KEY_TARGETS, targets.joinToString(","))
         }
+        dataChanged()
+    }
+
+    fun quickConvertEnabled(): Boolean = preferences.getBoolean(KEY_QUICK_CONVERT_ENABLED, false)
+
+    fun saveQuickConvertEnabled(enabled: Boolean) {
+        preferences.edit { putBoolean(KEY_QUICK_CONVERT_ENABLED, enabled) }
+    }
+
+    fun quickConvertInput(): String? = preferences.getString(KEY_QUICK_CONVERT_INPUT, null)
+
+    fun saveQuickConvertInput(input: String) {
+        preferences.edit { putString(KEY_QUICK_CONVERT_INPUT, input) }
+    }
+
+    private fun dataChanged() {
         ExchangeRatesWidget.notifyDataChanged(appContext)
+        QuickConvertNotification.update(appContext)
     }
 
     private fun parse(source: RateSource, body: String): ExchangeRates = when (source) {
@@ -107,5 +124,7 @@ class RatesRepository(context: Context) {
         private const val KEY_RETRIEVED_AT_PREFIX = "rates_retrieved_at_"
         private const val KEY_BASE = "base_currency"
         private const val KEY_TARGETS = "target_currencies"
+        private const val KEY_QUICK_CONVERT_ENABLED = "quick_convert_enabled"
+        private const val KEY_QUICK_CONVERT_INPUT = "quick_convert_input"
     }
 }

@@ -1,9 +1,13 @@
 package dev.hydranet.fxcalc
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -23,7 +27,16 @@ class MainActivity : ComponentActivity() {
     private var rateSource by mutableStateOf(RateSource.default)
     private var baseCurrency by mutableStateOf("USD")
     private var targets by mutableStateOf<List<String>>(emptyList())
+    private var quickConvertEnabled by mutableStateOf(false)
     private var refreshJob: Job? = null
+    private val notificationPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) {
+                setQuickConvert(true)
+            } else {
+                Toast.makeText(this, R.string.quick_convert_permission_denied, Toast.LENGTH_LONG).show()
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,10 +72,34 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                     onSwap = ::swapWith,
+                    quickConvertEnabled = quickConvertEnabled,
+                    onQuickConvertChange = ::setQuickConvert,
                 )
             }
         }
         refreshRates()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        quickConvertEnabled = repository.quickConvertEnabled() && hasNotificationPermission()
+        // Brings the notification back if it was swiped away while the setting is on.
+        QuickConvertNotification.update(this)
+    }
+
+    private fun hasNotificationPermission(): Boolean =
+        checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+
+    private fun setQuickConvert(enabled: Boolean) {
+        if (!enabled) {
+            QuickConvertNotification.disable(this)
+        } else if (!hasNotificationPermission()) {
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            return
+        } else {
+            QuickConvertNotification.enable(this)
+        }
+        quickConvertEnabled = enabled
     }
 
     private fun refreshRates() {

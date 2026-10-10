@@ -20,7 +20,7 @@ class WidgetRefreshService : JobService() {
     private val jobs = mutableMapOf<Int, Job>()
 
     override fun onStartJob(params: JobParameters): Boolean {
-        if (ExchangeRatesWidget.widgetIds(this).isEmpty()) {
+        if (ExchangeRatesWidget.widgetIds(this).isEmpty() && !RatesRepository(this).quickConvertEnabled()) {
             cancel(this)
             return false
         }

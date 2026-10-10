@@ -36,7 +36,7 @@ class ExchangeRatesWidget : AppWidgetProvider() {
     }
 
     override fun onDisabled(context: Context) {
-        WidgetRefreshService.cancel(context)
+        if (!RatesRepository(context).quickConvertEnabled()) WidgetRefreshService.cancel(context)
     }
 
     companion object {

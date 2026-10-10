@@ -27,11 +27,14 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ArrowDropDown
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.DragHandle
+import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
@@ -46,6 +49,7 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -104,6 +108,8 @@ internal fun ConverterScreen(
     onTargetRemoved: (String) -> Unit,
     onTargetMoved: (String, String) -> Unit,
     onSwap: (String) -> Unit,
+    quickConvertEnabled: Boolean,
+    onQuickConvertChange: (Boolean) -> Unit,
 ) {
     var amountText by rememberSaveable { mutableStateOf("100") }
     var pickerMode by remember { mutableStateOf<PickerMode?>(null) }
@@ -127,6 +133,19 @@ internal fun ConverterScreen(
                     )
                 },
                 actions = {
+                    IconToggleButton(
+                        checked = quickConvertEnabled,
+                        onCheckedChange = onQuickConvertChange,
+                    ) {
+                        Icon(
+                            if (quickConvertEnabled) {
+                                Icons.Outlined.NotificationsActive
+                            } else {
+                                Icons.Outlined.NotificationsNone
+                            },
+                            contentDescription = stringResource(R.string.quick_convert_toggle),
+                        )
+                    }
                     IconButton(onClick = onRefresh, enabled = !refreshing) {
                         if (refreshing) {
                             CircularProgressIndicator(
@@ -241,6 +260,7 @@ internal fun ConverterScreen(
                         )
                         ConversionCard(
                             info = info,
+                            starred = quickConvertEnabled && index == 0,
                             baseCode = baseCode,
                             amount = amount,
                             rates = rates,
@@ -524,6 +544,7 @@ private fun RateSourceDialog(
 @Composable
 private fun ConversionCard(
     info: CurrencyInfo,
+    starred: Boolean,
     baseCode: String,
     amount: BigDecimal?,
     rates: ExchangeRates?,
@@ -545,12 +566,23 @@ private fun ConversionCard(
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        info.code,
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            info.code,
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        if (starred) {
+                            Spacer(Modifier.width(6.dp))
+                            Icon(
+                                Icons.Filled.Star,
+                                contentDescription = stringResource(R.string.quick_convert_starred),
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    }
                     Text(
                         info.name,
                         style = MaterialTheme.typography.bodySmall,
@@ -676,7 +708,7 @@ private fun CurrencyPicker(
     )
 }
 
-private fun formatAmount(value: BigDecimal, code: String): String {
+internal fun formatAmount(value: BigDecimal, code: String): String {
     val digits = Currency.getInstance(code).defaultFractionDigits.coerceAtLeast(0)
     return NumberFormat.getNumberInstance(Locale.getDefault()).apply {
         minimumFractionDigits = digits

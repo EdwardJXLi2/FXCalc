@@ -9,6 +9,7 @@ Android app for converting one amount into several currencies.
 - Use saved rates offline.
 - Pull down to refresh rates.
 - Home-screen widget for saved currencies.
+- Quick-convert notification (experimental): enter an amount in the notification shade to convert it.
 
 ## Requirements
 
