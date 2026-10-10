@@ -1,3 +1,38 @@
 <resources>
     <string name="app_name">FXCalc</string>
+    <string name="refresh_rates">Refresh rates</string>
+    <string name="rate_source">Rate source</string>
+    <string name="add_currency">Add currency</string>
+    <string name="currencies">Currencies</string>
+    <string name="from_currency">From</string>
+    <string name="amount">Amount</string>
+    <string name="empty_currencies">Add a currency to start converting.</string>
+    <string name="loading_rates">Loading rates…</string>
+    <string name="refreshing_rates">Updating rates…</string>
+    <string name="load_failed">Couldn’t load rates. Check your connection and try again.</string>
+    <string name="refresh_failed">Couldn’t update rates. Using saved rates from %1$s.</string>
+    <string name="rates_unavailable">Rates unavailable</string>
+    <string name="rate_date">Rate date</string>
+    <string name="rates_downloaded">Downloaded</string>
+    <string name="reference_rates_note">Bank and card rates may differ; fees may apply.</string>
+    <string name="daily_rates">Updated daily</string>
+    <string name="community_daily_rates">Community · Updated daily</string>
+    <string name="central_bank_rates">Central bank rates</string>
+    <string name="twelve_hour_rates">Updated every 12 hours</string>
+    <string name="euro_reference_rates">Euro reference rates</string>
+    <string name="close">Close</string>
+    <string name="done">Done</string>
+    <string name="reorder_currency">Hold and drag to reorder %1$s</string>
+    <string name="move_currency_up">Move %1$s up</string>
+    <string name="move_currency_down">Move %1$s down</string>
+    <string name="use_as_base">Convert from %1$s</string>
+    <string name="remove_currency">Remove %1$s</string>
+    <string name="search">Search</string>
+    <string name="search_hint">Country or currency</string>
+    <string name="clear_search">Clear search</string>
+    <string name="no_currencies">No matching currencies</string>
+    <plurals name="currency_count">
+        <item quantity="one">%d currency</item>
+        <item quantity="other">%d currencies</item>
+    </plurals>
 </resources>
