@@ -1,0 +1,121 @@
+name: Build APKs
+
+on:
+  push:
+    branches: [main, master]
+    tags: ["v*"]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build APKs
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+
+      - name: Install Android SDK packages
+        run: sdkmanager --install "platforms;android-36.1" "build-tools;36.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+
+      - name: Restore release keystore
+        if: github.event_name != 'pull_request'
+        env:
+          FXCALC_KEYSTORE_BASE64: ${{ secrets.FXCALC_KEYSTORE_BASE64 }}
+          FXCALC_KEYSTORE_PASSWORD: ${{ secrets.FXCALC_KEYSTORE_PASSWORD }}
+          FXCALC_KEY_ALIAS: ${{ secrets.FXCALC_KEY_ALIAS }}
+          FXCALC_KEY_PASSWORD: ${{ secrets.FXCALC_KEY_PASSWORD }}
+        run: |
+          if [ -z "$FXCALC_KEYSTORE_BASE64" ] || [ -z "$FXCALC_KEYSTORE_PASSWORD" ] || [ -z "$FXCALC_KEY_ALIAS" ] || [ -z "$FXCALC_KEY_PASSWORD" ]; then
+            echo "::error::Missing one or more FXCalc release signing secrets."
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/keystores"
+          umask 077
+          printf '%s' "$FXCALC_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/keystores/fxcalc-release.jks"
+
+      - name: Run unit tests and build debug APK
+        run: ./gradlew :app:testDebugUnitTest :app:assembleDebug
+
+      - name: Build signed release APK
+        if: github.event_name != 'pull_request'
+        env:
+          FXCALC_KEYSTORE_FILE: ${{ runner.temp }}/keystores/fxcalc-release.jks
+          FXCALC_KEYSTORE_PASSWORD: ${{ secrets.FXCALC_KEYSTORE_PASSWORD }}
+          FXCALC_KEY_ALIAS: ${{ secrets.FXCALC_KEY_ALIAS }}
+          FXCALC_KEY_PASSWORD: ${{ secrets.FXCALC_KEY_PASSWORD }}
+        run: |
+          ./gradlew :app:assembleRelease
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose app/build/outputs/apk/release/app-release.apk
+
+      - name: Remove release keystore
+        if: always() && github.event_name != 'pull_request'
+        run: rm -f "$RUNNER_TEMP/keystores/fxcalc-release.jks"
+
+      - name: Stage APKs
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/debug/app-debug.apk dist/fxcalc-debug-latest.apk
+          if [ "$EVENT_NAME" != "pull_request" ]; then
+            cp app/build/outputs/apk/release/app-release.apk dist/fxcalc-release-latest.apk
+          fi
+
+      - name: Upload APK artifacts
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: fxcalc-latest-apks
+          path: dist/*.apk
+          if-no-files-found: error
+
+  publish-latest:
+    name: Publish latest release
+    runs-on: ubuntu-24.04
+    needs: build
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: write
+    concurrency:
+      group: latest-apk-release
+      cancel-in-progress: false
+
+    steps:
+      - name: Download APK artifacts
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: fxcalc-latest-apks
+          path: dist
+
+      - name: Publish latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test -f dist/fxcalc-debug-latest.apk
+          test -f dist/fxcalc-release-latest.apk
+          gh release delete latest --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes || true
+          gh api --method DELETE "repos/$GITHUB_REPOSITORY/git/refs/tags/latest" || true
+          gh release create latest dist/*.apk \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Latest Build" \
+            --notes "Installable debug and signed release APKs for $GITHUB_SHA. Requires Android 14 or newer." \
+            --latest

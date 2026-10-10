@@ -13,6 +13,7 @@ Android app for converting one amount into several currencies.
 ## Requirements
 
 - Android Studio or the Android Gradle plugin toolchain.
+- JDK 21.
 - Android SDK 36.1.
 - Android 14 or newer device or emulator.
 
