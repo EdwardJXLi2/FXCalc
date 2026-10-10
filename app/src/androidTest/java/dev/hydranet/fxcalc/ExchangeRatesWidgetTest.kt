@@ -167,7 +167,7 @@ class ExchangeRatesWidgetTest {
     }
 
     @Test
-    fun minimumSizeHasRoomForAFullCurrencyRow() {
+    fun compactSizeHasRoomForAFullCurrencyRow() {
         withWidget { view ->
             val density = context.resources.displayMetrics.density
             view.measure(
