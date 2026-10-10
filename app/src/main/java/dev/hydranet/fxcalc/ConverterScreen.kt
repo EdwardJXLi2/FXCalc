@@ -57,6 +57,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -162,136 +163,140 @@ internal fun ConverterScreen(
         },
         containerColor = MaterialTheme.colorScheme.background,
     ) { innerPadding ->
-        LazyColumn(
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .reorderCurrencies(dragState),
-            contentPadding = PaddingValues(
-                start = 20.dp,
-                top = 12.dp,
-                end = 20.dp,
-                bottom = 112.dp,
-            ),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+        PullToRefreshBox(
+            isRefreshing = refreshing,
+            onRefresh = onRefresh,
+            modifier = Modifier.fillMaxSize().padding(innerPadding),
         ) {
-            item(key = "amount") {
-                AmountPanel(
-                    amountText = amountText,
-                    baseInfo = baseInfo,
-                    onAmountChange = { if (AMOUNT_PATTERN.matches(it)) amountText = it },
-                    onBaseClick = { pickerMode = PickerMode.BASE },
-                )
-            }
-
-            if (rates == null || refreshing || refreshFailed) {
-                item(key = "status") {
-                    RateStatusLine(
-                        rates = rates,
-                        refreshing = refreshing,
-                        refreshFailed = refreshFailed,
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .reorderCurrencies(dragState),
+                contentPadding = PaddingValues(
+                    start = 20.dp,
+                    top = 12.dp,
+                    end = 20.dp,
+                    bottom = 112.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                item(key = "amount") {
+                    AmountPanel(
+                        amountText = amountText,
+                        baseInfo = baseInfo,
+                        onAmountChange = { if (AMOUNT_PATTERN.matches(it)) amountText = it },
+                        onBaseClick = { pickerMode = PickerMode.BASE },
                     )
                 }
-            }
 
-            item(key = "currencies_header") {
-                Text(
-                    stringResource(R.string.currencies),
-                    modifier = Modifier.padding(start = 4.dp, top = 4.dp),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
-            if (targetCodes.isEmpty()) {
-                item(key = "empty") {
-                    ElevatedCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.elevatedCardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        ),
-                    ) {
-                        Text(
-                            stringResource(R.string.empty_currencies),
-                            modifier = Modifier.padding(20.dp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                if (rates == null || refreshing || refreshFailed) {
+                    item(key = "status") {
+                        RateStatusLine(
+                            rates = rates,
+                            refreshing = refreshing,
+                            refreshFailed = refreshFailed,
                         )
                     }
                 }
-            } else {
-                itemsIndexed(targetCodes, key = { _, code -> code }) { index, code ->
-                    val info = CurrencyCatalog.find(code) ?: return@itemsIndexed
-                    val moveUpLabel = stringResource(R.string.move_currency_up, code)
-                    val moveDownLabel = stringResource(R.string.move_currency_down, code)
-                    val isDragging = dragState.draggingCode == code
-                    val isRaised = isDragging || dragState.settlingCode == code
-                    val dragScale by animateFloatAsState(
-                        targetValue = if (isDragging) 1.015f else 1f,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMediumLow,
-                        ),
-                        label = "${code}DragScale",
+
+                item(key = "currencies_header") {
+                    Text(
+                        stringResource(R.string.currencies),
+                        modifier = Modifier.padding(start = 4.dp, top = 4.dp),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    ConversionCard(
-                        info = info,
-                        baseCode = baseCode,
-                        amount = amount,
-                        rates = rates,
-                        modifier = Modifier
-                            .animateItem(
-                                fadeInSpec = null,
-                                placementSpec = if (isRaised) {
-                                    null
-                                } else {
-                                    spring(
-                                        dampingRatio = Spring.DampingRatioNoBouncy,
-                                        stiffness = Spring.StiffnessMediumLow,
-                                    )
-                                },
-                                fadeOutSpec = null,
+                }
+
+                if (targetCodes.isEmpty()) {
+                    item(key = "empty") {
+                        ElevatedCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.elevatedCardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            ),
+                        ) {
+                            Text(
+                                stringResource(R.string.empty_currencies),
+                                modifier = Modifier.padding(20.dp),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            .zIndex(if (isRaised) 1f else 0f)
-                            .graphicsLayer {
-                                translationY = dragState.offset(code)
-                                scaleX = dragScale
-                                scaleY = dragScale
-                            }
-                            .semantics {
-                                customActions = buildList {
-                                    if (index > 0) {
-                                        add(CustomAccessibilityAction(moveUpLabel) {
-                                            onTargetMoved(code, targetCodes[index - 1])
-                                            true
-                                        })
-                                    }
-                                    if (index < targetCodes.lastIndex) {
-                                        add(CustomAccessibilityAction(moveDownLabel) {
-                                            onTargetMoved(code, targetCodes[index + 1])
-                                            true
-                                        })
-                                    }
+                        }
+                    }
+                } else {
+                    itemsIndexed(targetCodes, key = { _, code -> code }) { index, code ->
+                        val info = CurrencyCatalog.find(code) ?: return@itemsIndexed
+                        val moveUpLabel = stringResource(R.string.move_currency_up, code)
+                        val moveDownLabel = stringResource(R.string.move_currency_down, code)
+                        val isDragging = dragState.draggingCode == code
+                        val isRaised = isDragging || dragState.settlingCode == code
+                        val dragScale by animateFloatAsState(
+                            targetValue = if (isDragging) 1.015f else 1f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                stiffness = Spring.StiffnessMediumLow,
+                            ),
+                            label = "${code}DragScale",
+                        )
+                        ConversionCard(
+                            info = info,
+                            baseCode = baseCode,
+                            amount = amount,
+                            rates = rates,
+                            modifier = Modifier
+                                .animateItem(
+                                    fadeInSpec = null,
+                                    placementSpec = if (isRaised) {
+                                        null
+                                    } else {
+                                        spring(
+                                            dampingRatio = Spring.DampingRatioNoBouncy,
+                                            stiffness = Spring.StiffnessMediumLow,
+                                        )
+                                    },
+                                    fadeOutSpec = null,
+                                )
+                                .zIndex(if (isRaised) 1f else 0f)
+                                .graphicsLayer {
+                                    translationY = dragState.offset(code)
+                                    scaleX = dragScale
+                                    scaleY = dragScale
                                 }
-                            },
-                        onSwap = { onSwap(code) },
-                        onRemove = { onTargetRemoved(code) },
+                                .semantics {
+                                    customActions = buildList {
+                                        if (index > 0) {
+                                            add(CustomAccessibilityAction(moveUpLabel) {
+                                                onTargetMoved(code, targetCodes[index - 1])
+                                                true
+                                            })
+                                        }
+                                        if (index < targetCodes.lastIndex) {
+                                            add(CustomAccessibilityAction(moveDownLabel) {
+                                                onTargetMoved(code, targetCodes[index + 1])
+                                                true
+                                            })
+                                        }
+                                    }
+                                },
+                            onSwap = { onSwap(code) },
+                            onRemove = { onTargetRemoved(code) },
+                        )
+                    }
+                }
+
+                item(key = "source") {
+                    val date = rates?.date?.format(
+                        DateTimeFormatter.ofPattern("d MMM yyyy", Locale.getDefault()),
+                    )
+                    Text(
+                        if (date == null) rateSource.title else "${rateSource.title} · $date",
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
-
-            item(key = "source") {
-                val date = rates?.date?.format(
-                    DateTimeFormatter.ofPattern("d MMM yyyy", Locale.getDefault()),
-                )
-                Text(
-                    if (date == null) rateSource.title else "${rateSource.title} · $date",
-                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
         }
     }
 

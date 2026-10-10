@@ -16,6 +16,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import dev.hydranet.fxcalc.ui.theme.FXCalcTheme
 import java.math.BigDecimal
 import java.time.LocalDate
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -30,6 +31,8 @@ class CurrencyReorderTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context get() = instrumentation.targetContext
     private val order = AtomicReference<List<String>>()
+    private val refreshCount = AtomicInteger()
+    private var refreshing by mutableStateOf(false)
     private lateinit var scenario: ActivityScenario<MainActivity>
 
     @Before
@@ -38,8 +41,10 @@ class CurrencyReorderTest {
             .map { it.code }
             .filter { it !in listOf("EUR", "GBP", "CHF", "JPY", "USD") }
         order.set(initial)
+        refreshCount.set(0)
         scenario = ActivityScenario.launch(MainActivity::class.java)
         scenario.onActivity { activity ->
+            refreshing = false
             var targets by mutableStateOf(initial)
             val rates = ExchangeRates(
                 LocalDate.of(2026, 9, 18),
@@ -49,12 +54,15 @@ class CurrencyReorderTest {
                 FXCalcTheme {
                     ConverterScreen(
                         rates = rates,
-                        refreshing = false,
+                        refreshing = refreshing,
                         refreshFailed = false,
                         rateSource = RateSource.default,
                         baseCode = "USD",
                         targetCodes = targets,
-                        onRefresh = {},
+                        onRefresh = {
+                            refreshCount.incrementAndGet()
+                            refreshing = true
+                        },
                         onSourceSelected = {},
                         onBaseSelected = {},
                         onTargetAdded = {},
@@ -109,6 +117,7 @@ class CurrencyReorderTest {
         waitUntil(message = { "EUR should settle at $startY, got ${boundsFor(reorderLabel("EUR")).centerY()}" }) {
             kotlin.math.abs(boundsFor(reorderLabel("EUR")).centerY() - startY) < 8f
         }
+        assertEquals(0, refreshCount.get())
     }
 
     @Test
@@ -133,6 +142,7 @@ class CurrencyReorderTest {
         } finally {
             event(downTime, MotionEvent.ACTION_UP, x, bottom)
         }
+        assertEquals(0, refreshCount.get())
     }
 
     @Test
@@ -150,6 +160,51 @@ class CurrencyReorderTest {
             event(downTime, MotionEvent.ACTION_UP, x, toY)
         }
         waitUntil { boundsFor(reorderLabel("EUR")).centerY() < fromY - 100 }
+        assertEquals(initialOrder, order.get())
+        assertEquals(0, refreshCount.get())
+    }
+
+    @Test
+    fun pullingDownRefreshesOnceUntilTheCurrentRefreshFinishes() {
+        val initialOrder = order.get()
+        pullDown(220f)
+        waitUntil { refreshCount.get() == 1 }
+        assertEquals(initialOrder, order.get())
+
+        pullDown(220f)
+        SystemClock.sleep(400)
+        assertEquals("An active refresh must not restart", 1, refreshCount.get())
+
+        scenario.onActivity { refreshing = false }
+        waitUntil { nodeWithDescription(context.getString(R.string.refresh_rates)) != null }
+        SystemClock.sleep(400)
+        pullDown(220f)
+        waitUntil { refreshCount.get() == 2 }
+        assertEquals(initialOrder, order.get())
+    }
+
+    @Test
+    fun shortPullsDoNotRefreshOrReorder() {
+        val initialOrder = order.get()
+        pullDown(50f)
+        SystemClock.sleep(400)
+        assertEquals(0, refreshCount.get())
+        assertEquals(initialOrder, order.get())
+    }
+
+    @Test
+    fun pullingDownAwayFromTheTopScrollsWithoutRefreshing() {
+        val initialOrder = order.get()
+        val density = context.resources.displayMetrics.density
+        val third = boundsFor(reorderLabel("CHF"))
+        swipe(third.centerX().toFloat(), third.centerY().toFloat(), third.centerY() - 300 * density)
+
+        val second = boundsFor(reorderLabel("GBP"))
+        val fromY = second.centerY().toFloat()
+        swipe(second.centerX().toFloat(), fromY, fromY + 220 * density)
+        waitUntil { boundsFor(reorderLabel("GBP")).centerY() > fromY + 100 }
+        SystemClock.sleep(400)
+        assertEquals(0, refreshCount.get())
         assertEquals(initialOrder, order.get())
     }
 
@@ -253,6 +308,24 @@ class CurrencyReorderTest {
         event(downTime, MotionEvent.ACTION_DOWN, x, y)
         SystemClock.sleep(ViewConfiguration.getLongPressTimeout() + 150L)
         return downTime
+    }
+
+    private fun pullDown(distanceDp: Float) {
+        val bounds = boundsFor(reorderLabel("EUR"))
+        val fromY = bounds.centerY().toFloat()
+        swipe(bounds.centerX().toFloat(), fromY, fromY + distanceDp * context.resources.displayMetrics.density)
+    }
+
+    private fun swipe(x: Float, fromY: Float, toY: Float) {
+        val downTime = SystemClock.uptimeMillis()
+        event(downTime, MotionEvent.ACTION_DOWN, x, fromY)
+        try {
+            move(downTime, x, fromY, toY)
+            SystemClock.sleep(120)
+            event(downTime, MotionEvent.ACTION_MOVE, x, toY)
+        } finally {
+            event(downTime, MotionEvent.ACTION_UP, x, toY)
+        }
     }
 
     private fun move(downTime: Long, x: Float, fromY: Float, toY: Float) {

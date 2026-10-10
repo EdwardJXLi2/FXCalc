@@ -2,6 +2,8 @@
 
 FXCalc converts one amount into several currencies at once. Choose a starting currency, add or remove destination currencies, and tap the swap icon on a result to make it the starting currency. The app remembers your currency choices.
 
+Pull down at the top of the list to refresh rates, or use the refresh button in the top bar.
+
 Hold a currency card or its drag handle to reorder it. Drag near the top or bottom of the list to scroll. The order is saved automatically. TalkBack users can use the card’s move up and move down actions.
 
 Choose a rate source with the settings button in the top bar. Changes are saved immediately; the dialog stays open to show the selected source's rate date, last download, and update status. Tap Done to close it:
