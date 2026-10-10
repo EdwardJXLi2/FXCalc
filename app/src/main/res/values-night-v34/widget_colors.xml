@@ -1,0 +1,9 @@
+<resources>
+    <color name="widget_background">@android:color/system_surface_container_low_dark</color>
+    <color name="widget_surface">@android:color/system_surface_container_high_dark</color>
+    <color name="widget_on_surface">@android:color/system_on_surface_dark</color>
+    <color name="widget_on_surface_variant">@android:color/system_on_surface_variant_dark</color>
+    <color name="widget_primary">@android:color/system_primary_dark</color>
+    <color name="widget_primary_container">@android:color/system_primary_container_dark</color>
+    <color name="widget_on_primary_container">@android:color/system_on_primary_container_dark</color>
+</resources>

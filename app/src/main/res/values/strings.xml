@@ -1,5 +1,16 @@
 <resources>
     <string name="app_name">FXCalc</string>
+    <string name="widget_name">FXCalc exchange rates</string>
+    <string name="widget_description">Exchange rates for the currencies selected in FXCalc.</string>
+    <string name="widget_base">1 %1$s =</string>
+    <string name="widget_base_preview">1 USD =</string>
+    <string name="widget_last_fetched">Last fetched: %1$s</string>
+    <string name="widget_rates_dated">Rates dated: %1$s</string>
+    <string name="widget_source">Source: %1$s</string>
+    <string name="widget_saved_rates">Saved rates from %1$s (refresh failed)</string>
+    <string name="widget_refresh_failed">Couldn’t update rates. Tap refresh to retry.</string>
+    <string name="widget_rate_description">1 %1$s equals %2$s %3$s</string>
+    <string name="widget_rate_unavailable">%1$s rate unavailable</string>
     <string name="refresh_rates">Refresh rates</string>
     <string name="rate_source">Rate source</string>
     <string name="add_currency">Add currency</string>

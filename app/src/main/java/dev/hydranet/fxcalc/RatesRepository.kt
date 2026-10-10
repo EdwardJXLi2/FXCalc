@@ -7,6 +7,7 @@ import java.time.Instant
 import javax.net.ssl.HttpsURLConnection
 
 class RatesRepository(context: Context) {
+    private val appContext = context.applicationContext
     private val preferences = context.getSharedPreferences("fxcalc", Context.MODE_PRIVATE)
 
     fun cached(source: RateSource = source()): ExchangeRates? =
@@ -26,12 +27,16 @@ class RatesRepository(context: Context) {
                 preferences.edit {
                     putString(cacheKey(source), body)
                     putLong(retrievedAtKey(source), retrievedAt.toEpochMilli())
+                    putBoolean(refreshFailedKey(source), false)
                 }
+                ExchangeRatesWidget.notifyDataChanged(appContext)
                 return rates
             } catch (exception: Exception) {
                 lastFailure = exception
             }
         }
+        preferences.edit { putBoolean(refreshFailedKey(source), true) }
+        ExchangeRatesWidget.notifyDataChanged(appContext)
         throw lastFailure ?: IllegalStateException("No URL configured for ${source.title}")
     }
 
@@ -50,7 +55,11 @@ class RatesRepository(context: Context) {
 
     fun saveSource(source: RateSource) {
         preferences.edit { putString(KEY_SOURCE, source.id) }
+        ExchangeRatesWidget.notifyDataChanged(appContext)
     }
+
+    fun refreshFailed(source: RateSource = source()): Boolean =
+        preferences.getBoolean(refreshFailedKey(source), false)
 
     fun baseCurrency(): String = preferences.getString(KEY_BASE, null)
         ?.takeIf { CurrencyCatalog.find(it) != null }
@@ -70,6 +79,7 @@ class RatesRepository(context: Context) {
             putString(KEY_BASE, base)
             putString(KEY_TARGETS, targets.joinToString(","))
         }
+        ExchangeRatesWidget.notifyDataChanged(appContext)
     }
 
     private fun parse(source: RateSource, body: String): ExchangeRates = when (source) {
@@ -83,6 +93,8 @@ class RatesRepository(context: Context) {
     private fun cacheKey(source: RateSource) = "$KEY_CACHE_PREFIX${source.id}"
 
     private fun retrievedAtKey(source: RateSource) = "$KEY_RETRIEVED_AT_PREFIX${source.id}"
+
+    private fun refreshFailedKey(source: RateSource) = "rates_refresh_failed_${source.id}"
 
     private fun cachedRetrievedAt(source: RateSource): Instant? =
         preferences.getLong(retrievedAtKey(source), 0L)

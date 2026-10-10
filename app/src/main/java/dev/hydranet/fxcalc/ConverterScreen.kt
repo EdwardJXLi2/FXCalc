@@ -685,7 +685,7 @@ private fun formatAmount(value: BigDecimal, code: String): String {
     }.format(value)
 }
 
-private fun formatRate(value: BigDecimal): String =
+internal fun formatRate(value: BigDecimal): String =
     value.setScale(6, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
 
 private val AMOUNT_PATTERN = Regex("""\d{0,12}([.,]\d{0,6})?""")

@@ -8,6 +8,7 @@ Android app for converting one amount into several currencies.
 - Choose from five exchange-rate sources.
 - Use saved rates offline.
 - Pull down to refresh rates.
+- Home-screen widget for saved currencies.
 
 ## Requirements
 
