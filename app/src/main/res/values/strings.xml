@@ -49,8 +49,8 @@
     <string name="quick_convert_permission_denied">Allow notifications for FXCalc to use quick convert.</string>
     <string name="quick_convert_action">Convert</string>
     <string name="quick_convert_label">Amount in %1$s</string>
-    <string name="quick_convert_prompt">Enter an amount in %1$s, or try 25 %2$s.</string>
-    <string name="quick_convert_example">Enter a number like 25, or add a currency code like 25 %1$s.</string>
+    <string name="quick_convert_prompt">Enter an amount in %1$s. Try 25 %2$s or 25 to %2$s.</string>
+    <string name="quick_convert_example">Try 25, 25 %1$s, 25 to %1$s, or 25 USD to CAD.</string>
     <string name="quick_convert_invalid">“%1$s” isn’t an amount</string>
     <string name="quick_convert_unknown_currency">Unknown currency: %1$s</string>
     <string name="quick_convert_amount">%1$s =</string>

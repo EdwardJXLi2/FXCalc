@@ -12,19 +12,26 @@ import android.graphics.drawable.Icon
 import android.widget.RemoteViews
 import java.math.BigDecimal
 
-internal data class QuickConvertRequest(val amount: BigDecimal, val currency: String?)
+internal data class QuickConvertRequest(
+    val amount: BigDecimal,
+    val sourceCurrency: String?,
+    val targetCurrency: String? = null,
+)
 
-/** Parses `25`, `25.5 EUR`, or `EUR 25,5`. Returns null for anything else. */
 internal fun parseQuickConvertInput(text: String): QuickConvertRequest? {
     val match = QUICK_CONVERT_PATTERN.matchEntire(text.trim()) ?: return null
-    val (prefix, number, suffix) = match.destructured
+    val (prefix, number, suffix, target) = match.destructured
     if (prefix.isNotEmpty() && suffix.isNotEmpty()) return null
     val amount = number.replace(',', '.').toBigDecimalOrNull() ?: return null
-    return QuickConvertRequest(amount, prefix.ifEmpty { suffix }.uppercase().ifEmpty { null })
+    return QuickConvertRequest(
+        amount,
+        prefix.ifEmpty { suffix }.uppercase().ifEmpty { null },
+        target.uppercase().ifEmpty { null },
+    )
 }
 
 private val QUICK_CONVERT_PATTERN =
-    Regex("""(?i)([a-z]{3})?\s*(\d{1,12}(?:[.,]\d{0,6})?)\s*([a-z]{3})?""")
+    Regex("""(?i)([a-z]{3})?\s*(\d{1,12}(?:[.,]\d{0,6})?)\s*([a-z]{3})?(?:\s+to\s+([a-z]{3}))?""")
 
 internal object QuickConvertNotification {
     private const val CHANNEL_ID = "quick_convert"
@@ -66,7 +73,10 @@ internal object QuickConvertNotification {
         val exampleCode = targets.firstOrNull() ?: if (base == "USD") "EUR" else "USD"
         val input = repository.quickConvertInput()
         val request = input?.let(::parseQuickConvertInput)
-        val from = request?.currency ?: base
+        val from = request?.sourceCurrency ?: base
+        val to = request?.targetCurrency
+            ?: targets.firstOrNull()?.takeIf { it != from }
+            ?: base.takeIf { it != from }
         val example = context.getString(R.string.quick_convert_example, exampleCode)
 
         val title: String
@@ -85,9 +95,11 @@ internal object QuickConvertNotification {
                 title = context.getString(R.string.quick_convert_unknown_currency, from)
                 text = example
             }
+            to != null && CurrencyCatalog.find(to) == null -> {
+                title = context.getString(R.string.quick_convert_unknown_currency, to)
+                text = example
+            }
             else -> {
-                // Converts to the first listed currency, or back to the base when entered in that currency.
-                val to = targets.firstOrNull()?.takeIf { it != from } ?: base.takeIf { it != from }
                 val fromAmount = "${formatAmount(request.amount, from)} $from"
                 val converted = to?.let { rates?.convert(request.amount, from, it) }
                 val unitRate = to?.let { rates?.convert(BigDecimal.ONE, from, it) }
