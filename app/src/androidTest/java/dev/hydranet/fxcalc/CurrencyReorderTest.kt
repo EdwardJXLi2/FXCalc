@@ -59,6 +59,8 @@ class CurrencyReorderTest {
                         rateSource = RateSource.default,
                         baseCode = "USD",
                         targetCodes = targets,
+                        amountText = "100",
+                        onAmountChange = {},
                         onRefresh = {
                             refreshCount.incrementAndGet()
                             refreshing = true
@@ -74,6 +76,8 @@ class CurrencyReorderTest {
                             order.set(targets)
                         },
                         onSwap = {},
+                        quickConvertEnabled = false,
+                        onQuickConvertChange = {},
                     )
                 }
             }

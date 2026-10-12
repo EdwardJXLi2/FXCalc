@@ -1,6 +1,7 @@
 package dev.hydranet.fxcalc
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.widget.Toast
@@ -28,6 +29,8 @@ class MainActivity : ComponentActivity() {
     private var baseCurrency by mutableStateOf("USD")
     private var targets by mutableStateOf<List<String>>(emptyList())
     private var quickConvertEnabled by mutableStateOf(false)
+    internal var amountText by mutableStateOf("100")
+        private set
     private var refreshJob: Job? = null
     private val notificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -46,6 +49,8 @@ class MainActivity : ComponentActivity() {
         rates = repository.cached(rateSource)
         baseCurrency = repository.baseCurrency()
         targets = repository.targetCurrencies(baseCurrency)
+        amountText = savedInstanceState?.getString("amount") ?: "100"
+        if (savedInstanceState == null) handleSharedAmount(intent)
 
         setContent {
             FXCalcTheme {
@@ -56,6 +61,8 @@ class MainActivity : ComponentActivity() {
                     rateSource = rateSource,
                     baseCode = baseCurrency,
                     targetCodes = targets,
+                    amountText = amountText,
+                    onAmountChange = { amountText = it },
                     onRefresh = ::refreshRates,
                     onSourceSelected = ::selectSource,
                     onBaseSelected = ::selectBase,
@@ -78,6 +85,27 @@ class MainActivity : ComponentActivity() {
             }
         }
         refreshRates()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleSharedAmount(intent)
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putString("amount", amountText)
+        super.onSaveInstanceState(outState)
+    }
+
+    private fun handleSharedAmount(intent: Intent) {
+        if (intent.action != Intent.ACTION_SEND || intent.type != "text/plain") return
+        val sharedAmount = parseSharedAmount(intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString())
+        if (sharedAmount != null) {
+            amountText = sharedAmount
+        } else {
+            Toast.makeText(this, R.string.shared_amount_invalid, Toast.LENGTH_LONG).show()
+        }
     }
 
     override fun onStart() {

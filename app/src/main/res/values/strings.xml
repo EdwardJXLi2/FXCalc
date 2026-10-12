@@ -17,6 +17,7 @@
     <string name="currencies">Currencies</string>
     <string name="from_currency">From</string>
     <string name="amount">Amount</string>
+    <string name="shared_amount_invalid">Share a number such as 25 or 25.5.</string>
     <string name="empty_currencies">Add a currency to start converting.</string>
     <string name="loading_rates">Loading rates…</string>
     <string name="refreshing_rates">Updating rates…</string>

@@ -101,6 +101,8 @@ internal fun ConverterScreen(
     rateSource: RateSource,
     baseCode: String,
     targetCodes: List<String>,
+    amountText: String,
+    onAmountChange: (String) -> Unit,
     onRefresh: () -> Unit,
     onSourceSelected: (RateSource) -> Unit,
     onBaseSelected: (String) -> Unit,
@@ -111,7 +113,6 @@ internal fun ConverterScreen(
     quickConvertEnabled: Boolean,
     onQuickConvertChange: (Boolean) -> Unit,
 ) {
-    var amountText by rememberSaveable { mutableStateOf("100") }
     var pickerMode by remember { mutableStateOf<PickerMode?>(null) }
     var showRateSettings by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
@@ -204,7 +205,7 @@ internal fun ConverterScreen(
                     AmountPanel(
                         amountText = amountText,
                         baseInfo = baseInfo,
-                        onAmountChange = { if (AMOUNT_PATTERN.matches(it)) amountText = it },
+                        onAmountChange = { if (isAmountInput(it)) onAmountChange(it) },
                         onBaseClick = { pickerMode = PickerMode.BASE },
                     )
                 }
@@ -719,5 +720,3 @@ internal fun formatAmount(value: BigDecimal, code: String): String {
 
 internal fun formatRate(value: BigDecimal): String =
     value.setScale(6, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
-
-private val AMOUNT_PATTERN = Regex("""\d{0,12}([.,]\d{0,6})?""")
